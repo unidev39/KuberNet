@@ -27,6 +27,7 @@ Operating System: Ubuntu 24.04.4 LTS
 Firmware Version: 6.00
    Firmware Date: Wed 2018-12-12
     Firmware Age: 7y 5month 2w 3d
+
 */
 
 --Step 2 (Install Docker on Ubuntu)
