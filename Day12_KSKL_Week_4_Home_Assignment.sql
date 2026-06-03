@@ -1,3 +1,4 @@
+--Step 1 (Lab)
 --Clean Up
 --When you are done, tear down the minikube cluster to free up resources:
 root@minikube-n1:~# minikube delete --all
@@ -9,6 +10,7 @@ root@minikube-n1:~# minikube delete --all
 * Successfully deleted all profiles
 */
 
+--Step 1.0 (Lab)
 --Prerequisites
 --minikube installed (install guide)
 root@minikube-n1:~# minikube version
@@ -17,6 +19,7 @@ minikube version: v1.38.1
 commit: c93a4cb9311efc66b90d33ea03f75f2c4120e9b0
 */
 
+--Step 1.1 (Lab)
 --kubectl installed (install guide)
 root@minikube-n1:~# kubectl version
 /*
@@ -25,6 +28,7 @@ Kustomize Version: v5.8.1
 The connection to the server localhost:8080 was refused - did you specify the right host or port?
 */
 
+--Step 1.2 (Lab)
 --Docker running on your machine
 root@minikube-n1:~# docker version
 /*
@@ -57,6 +61,7 @@ Server: Docker Engine - Community
   GitCommit:        de40ad0
 */
 
+--Step 1.3 (Lab)
 root@minikube-n1:~# systemctl status docker
 /*
 ● docker.service - Docker Application Container Engine
@@ -84,6 +89,7 @@ Jun 02 14:35:33 minikube-n1.unidev.org.np dockerd[8509]: time="2026-06-02T14:35:
 lines 1-22/22 (END)
 */
 
+--Step 2 (Lab)
 --Environment Setup
 --# Start a 2-node minikube cluster
 root@minikube-n1:~# minikube start --nodes 2 --driver=docker
@@ -97,6 +103,7 @@ root@minikube-n1:~# minikube start --nodes 2 --driver=docker
 X Exiting due to DRV_AS_ROOT: The "docker" driver should not be used with root privileges.
 */
 
+--Step 2.1 (Lab)
 root@minikube-n1:~# minikube start --nodes 2 --driver=docker --force
 /*
 * minikube v1.38.1 on Ubuntu 24.04
@@ -127,6 +134,7 @@ root@minikube-n1:~# minikube start --nodes 2 --driver=docker --force
 * Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default
 */
 
+--Step 2.2 (Lab)
 --# Verify both nodes are Ready
 root@minikube-n1:~# kubectl get nodes
 /*
@@ -135,6 +143,7 @@ minikube       Ready    control-plane   4m36s   v1.35.1
 minikube-m02   Ready    <none>          2m4s    v1.35.1
 */
 
+--Step 2.3 (Lab)
 root@minikube-n1:~#  kubectl get nodes -o wide
 /*
 NAME           STATUS   ROLES           AGE    VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                         KERNEL-VERSION      CONTAINER-RUNTIME
@@ -142,6 +151,7 @@ minikube       Ready    control-plane   151m   v1.35.1   192.168.49.2   <none>  
 minikube-m02   Ready    <none>          148m   v1.35.1   192.168.49.3   <none>        Debian GNU/Linux 12 (bookworm)   6.8.0-111-generic   docker://29.2.1
 */
 
+--Step 2.4 (Lab)
 root@minikube-n1:~# kubectl get pods -A
 /*
 NAMESPACE     NAME                               READY   STATUS    RESTARTS   AGE
@@ -157,12 +167,13 @@ kube-system   kube-scheduler-minikube            1/1     Running   0          15
 kube-system   storage-provisioner                1/1     Running   0          151m
 */
 
---Step 2 (Lab) - # Enable metrics-server (needed for Task 2)
+--Step 3 (Lab) - # Enable metrics-server (needed for Task 2)
 root@minikube-n1:~# kubectl config current-context
 /*
 minikube
 */
 
+--Step 3.1 (Lab)
 root@minikube-n1:~# minikube addons enable metrics-server -p minikube
 /*
 * metrics-server is an addon maintained by Kubernetes. For any concerns contact minikube on GitHub.
@@ -171,6 +182,7 @@ You can view the list of minikube maintainers at: https://github.com/kubernetes/
 * The 'metrics-server' addon is enabled
 */
 
+--Step 3.1 (Lab)
 --# Wait ~60 seconds, then verify metrics-server works
 root@minikube-n1:~# kubectl top nodes
 /*
