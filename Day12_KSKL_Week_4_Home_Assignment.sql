@@ -10,7 +10,7 @@ root@minikube-n1:~# minikube delete --all
 * Successfully deleted all profiles
 */
 
---Step 1.0 (Lab)
+--Step 1.1 (Lab)
 --Prerequisites
 --minikube installed (install guide)
 root@minikube-n1:~# minikube version
@@ -19,7 +19,7 @@ minikube version: v1.38.1
 commit: c93a4cb9311efc66b90d33ea03f75f2c4120e9b0
 */
 
---Step 1.1 (Lab)
+--Step 1.2 (Lab)
 --kubectl installed (install guide)
 root@minikube-n1:~# kubectl version
 /*
@@ -28,7 +28,7 @@ Kustomize Version: v5.8.1
 The connection to the server localhost:8080 was refused - did you specify the right host or port?
 */
 
---Step 1.2 (Lab)
+--Step 1.3 (Lab)
 --Docker running on your machine
 root@minikube-n1:~# docker version
 /*
@@ -61,7 +61,7 @@ Server: Docker Engine - Community
   GitCommit:        de40ad0
 */
 
---Step 1.3 (Lab)
+--Step 1.4 (Lab)
 root@minikube-n1:~# systemctl status docker
 /*
 ● docker.service - Docker Application Container Engine
@@ -182,13 +182,14 @@ You can view the list of minikube maintainers at: https://github.com/kubernetes/
 * The 'metrics-server' addon is enabled
 */
 
---Step 3.1 (Lab)
+--Step 3.2 (Lab)
 --# Wait ~60 seconds, then verify metrics-server works
 root@minikube-n1:~# kubectl top nodes
 /*
 error: Metrics API not available
 */
 
+--Step 3.3 (Lab)
 root@minikube-n1:~# kubectl top nodes
 /*
 NAME           CPU(cores)   CPU(%)   MEMORY(bytes)   MEMORY(%)
@@ -197,6 +198,7 @@ minikube-m02   211m         10%      212Mi           4%
 */
 
 
+--Step 4 (Lab)
 --Task 1 — Self-Healing: Add Health Probes
 --1 Deploy the app without probes and see the problem
 --Task 1a — Deploy without probes, see the problem
@@ -218,23 +220,28 @@ spec:
     - containerPort: 8080
 */
 
+--Step 4.1 (Lab)
 root@minikube-n1:~# kubectl apply -f broken-pod.yaml --dry-run=client
 /*
 pod/api-no-probes created (dry run)
 */
 
+--Step 4.2 (Lab)
 root@minikube-n1:~# kubectl apply -f broken-pod.yaml
 /*
 pod/api-no-probes created
 */
 
+--Step 4.3 (Lab)
 --Notice that even after 10, 20, or 60 seconds, the Pod status stubbornly reads STATUS: Running and RESTARTS: 0
 root@minikube-n1:~# kubectl get pods api-no-probes -w -o wide
 /*
 NAME            READY   STATUS    RESTARTS   AGE     IP           NODE           NOMINATED NODE   READINESS GATES
+api-no-probes   0/1     ContainerCreating   0          13s   <none>   minikube-m02   <none>           <none>
 api-no-probes   1/1     Running   0          4m50s   10.244.1.3   minikube-m02   <none>           <none>
 */
 
+--Step 4.4 (Lab)
 root@minikube-n1:~# kubectl describe pods api-no-probes
 /*
 Name:             api-no-probes
@@ -293,12 +300,14 @@ Events:
   Normal  Started    9m52s  kubelet            spec.containers{web-app}: Container started
 */
 
+--Step 4.5 (Lab)
 --Clean up this Pod before moving on:
 root@minikube-n1:~# kubectl delete pod api-no-probes
 /*
 pod "api-no-probes" deleted from default namespace
 */
 
+--Step 5 (Lab)
 --1. Add a liveness probe to trigger automatic restarts
 --Task 1b — Add a liveness probe
 root@minikube-n1:~# vi api-self-healing.yaml
@@ -327,6 +336,7 @@ spec:
       failureThreshold: 3
 */
 
+--Step 5.1 (Lab)
 root@minikube-n1:~# kubectl get pods api-self-healing -w -o wide
 /*
 NAME               READY   STATUS    RESTARTS     AGE   IP           NODE           NOMINATED NODE   READINESS GATES
@@ -336,6 +346,7 @@ api-self-healing   1/1     Running   3 (2s ago)   51s   10.244.1.4   minikube-m0
 api-self-healing   0/1     CrashLoopBackOff   3 (0s ago)   65s   10.244.1.4   minikube-m02   <none>           <none>
 */
 
+--Step 5.2 (Lab)
 root@minikube-n1:~# kubectl describe pods api-self-healing
 /*
 Name:             api-self-healing
@@ -402,11 +413,13 @@ Events:
   Warning  BackOff    25s (x4 over 61s)    kubelet            spec.containers{web-app}: Back-off restarting failed container web-app in pod api-self-healing_default(b360cd52-6a1b-463e-b326-2dc8a6d16b59)
 */
 
+--Step 5.3 (Lab)
 root@minikube-n1:~# kubectl delete pod api-self-healing
 /*
 pod "api-self-healing" deleted from default namespace
 */
 
+--Step 6 (Lab)
 --3. Add a readiness probe to stop traffic routing during failures
 --Task 1c — Add a readiness probe
 root@minikube-n1:~# vi healed-pod.yaml
@@ -443,17 +456,19 @@ spec:
       failureThreshold: 3
 */
 
+--Step 6.1 (Lab)
 root@minikube-n1:~# kubectl apply -f healed-pod.yaml --dry-run=client
 /*
 pod/api-self-healing created (dry run)
 */
 
+--Step 6.2 (Lab)
 root@minikube-n1:~# kubectl apply -f healed-pod.yaml
 /*
 pod/api-self-healing created
 */
 
-
+--Step 6.3 (Lab)
 root@minikube-n1:~# kubectl get pods api-self-healing -w -o wide
 /*
 NAME               READY   STATUS    RESTARTS   AGE   IP           NODE           NOMINATED NODE   READINESS GATES
@@ -481,6 +496,7 @@ api-self-healing   1/1     Running            5 (55s ago)   2m35s   10.244.1.5  
 api-self-healing   0/1     Running            5 (65s ago)   2m45s   10.244.1.5   minikube-m02   <none>           <none>
 */
 
+--Step 6.4 (Lab)
 root@minikube-n1:~# kubectl describe pods api-self-healing
 /*
 Name:             api-self-healing
@@ -548,6 +564,7 @@ Events:
   Normal   Started    11s (x6 over 2m44s)    kubelet            spec.containers{web-app}: Container started
 */
 
+--Step 6.5 (Lab)
 root@minikube-n1:~# kubectl describe pods api-self-healing | grep -E "Liveness|Readiness"
 /*
     Liveness:       http-get http://:8080/healthz delay=2s timeout=1s period=2s #success=1 #failure=3
@@ -557,6 +574,7 @@ root@minikube-n1:~# kubectl describe pods api-self-healing | grep -E "Liveness|R
 */
 
 
+--Step 7 (Lab)
 --Task 2 — Taming Redis: Resource Requests & Limits
 --Task 2a — Deploy Redis without limits
 root@minikube-n1:~# vi redis-deploy.yaml
@@ -584,28 +602,33 @@ spec:
         - containerPort: 6379
 */
 
+--Step 7.1 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml --dry-run=client
 /*
 deployment.apps/redis unchanged (dry run)
 */
 
+--Step 7.2 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml
 /*
 deployment.apps/redis created
 */
 
+--Step 7.3 (Lab)
 root@minikube-n1:~# kubectl get pods -o wide
 /*
 NAME                     READY   STATUS    RESTARTS   AGE   IP           NODE           NOMINATED NODE   READINESS GATES
 redis-789cf764c8-9j9sh   1/1     Running   0          51s   10.244.1.8   minikube-m02   <none>           <none>
 */
 
+--Step 7.4 (Lab)
 root@minikube-n1:~# kubectl top pods
 /*
 NAME                     CPU(cores)   MEMORY(bytes)
 redis-789cf764c8-9j9sh   20m          3Mi
 */
 
+--Step 8 (Lab)
 --Task 2b — Add resource requests and limits
 root@minikube-n1:~# vi redis-deploy.yaml
 /*
@@ -640,27 +663,32 @@ spec:
             memory: 128Mi
 */
 
+--Step 8.1 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml --dry-run=client
 /*
 deployment.apps/redis configured (dry run)
 */
 
+--Step 8.2 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml
 /*
 deployment.apps/redis configured
 */
 
+--Step 8.3 (Lab)
 root@minikube-n1:~# kubectl rollout status deployment/redis
 /*
 deployment "redis" successfully rolled out
 */
 
+--Step 8.4 (Lab)
 root@minikube-n1:~# kubectl top pods
 /*
 NAME                    CPU(cores)   MEMORY(bytes)
 redis-d5c68fb8f-hrfkz   24m          3Mi
 */
 
+--Step 9 (Lab)
 --Task 2c — Witness an OOM kill (optional but educational)
 root@minikube-n1:~# vi mem-hog.yaml
 /*
@@ -687,22 +715,26 @@ spec:
         memory: 50Mi
 */
 
+--Step 9.1 (Lab)
 root@minikube-n1:~# kubectl apply -f mem-hog.yaml --dry-run=client
 /*
 pod/mem-hog created (dry run)
 */
 
+--Step 9.2 (Lab)
 root@minikube-n1:~# kubectl apply -f mem-hog.yaml
 /*
 pod/mem-hog created
 */
 
+--Step 9.3 (Lab)
 root@minikube-n1:~# kubectl get pods mem-hog -w -o wide
 /*
 NAME      READY   STATUS      RESTARTS   AGE   IP            NODE           NOMINATED NODE   READINESS GATES
 mem-hog   0/1     OOMKilled   0          38s   10.244.1.10   minikube-m02   <none>           <none>
 */
 
+--Step 9.4 (Lab)
 root@minikube-n1:~# kubectl get pods mem-hog -w -o wide
 /*
 NAME      READY   STATUS              RESTARTS   AGE   IP       NODE           NOMINATED NODE   READINESS GATES
@@ -711,11 +743,13 @@ mem-hog   0/1     OOMKilled           0          6s    10.244.1.11   minikube-m0
 mem-hog   0/1     OOMKilled           0          8s    10.244.1.11   minikube-m02   <none>           <none>
 */
 
+--Step 9.5 (Lab)
 root@minikube-n1:~# kubectl delete pods mem-hog
 /*
 pod "mem-hog" deleted from default namespace
 */
 
+--Step 9.6 (Lab)
 --Checkpoint
 --You should see your configured limits and requests printed.
 root@minikube-n1:~# kubectl describe deployment redis | grep -A 8 "Limits:"
@@ -731,6 +765,7 @@ root@minikube-n1:~# kubectl describe deployment redis | grep -A 8 "Limits:"
   Volumes:         <none>
 */
 
+--Step 10 (Lab)
 --Task 3 — Pinning Redis: nodeSelector & Taints
 --Task 3a — Label the database node
 root@minikube-n1:~# kubectl label node minikube-m02 role=database
@@ -738,6 +773,7 @@ root@minikube-n1:~# kubectl label node minikube-m02 role=database
 node/minikube-m02 labeled
 */
 
+--Step 10.1 (Lab)
 root@minikube-n1:~# kubectl get nodes --show-labels
 /*
 NAME           STATUS   ROLES           AGE     VERSION   LABELS
@@ -745,6 +781,7 @@ minikube       Ready    control-plane   3h54m   v1.35.1   beta.kubernetes.io/arc
 minikube-m02   Ready    <none>          3h51m   v1.35.1   beta.kubernetes.io/arch=amd64,beta.kubernetes.io/os=linux,kubernetes.io/arch=amd64,kubernetes.io/hostname=minikube-m02,kubernetes.io/os=linux,minikube.k8s.io/commit=c93a4cb9311efc66b90d33ea03f75f2c4120e9b0,minikube.k8s.io/name=minikube,minikube.k8s.io/primary=false,minikube.k8s.io/updated_at=2026_06_02T14_46_43_0700,minikube.k8s.io/version=v1.38.1,role=database
 */
 
+--Step 11 (Lab)
 --Task 3b — Pin Redis to the database node
 root@minikube-n1:~# vi redis-deploy.yaml
 /*
@@ -781,21 +818,25 @@ spec:
             memory: 128Mi
 */
 
+--Step 11.1 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml --dry-run=client
 /*
 deployment.apps/redis unchanged (dry run)
 */
 
+--Step 11.2 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml
 /*
 deployment.apps/redis configured
 */
 
+--Step 11.3 (Lab)
 root@minikube-n1:~# kubectl rollout status deployment/redis
 /*
 deployment "redis" successfully rolled out
 */
 
+--Step 11.4 (Lab)
 --The Redis Pod is now running on minikube-m02.
 root@minikube-n1:~# kubectl get pods -o wide
 /*
@@ -803,6 +844,7 @@ NAME                     READY   STATUS    RESTARTS   AGE   IP            NODE  
 redis-78756c98dc-b6khd   1/1     Running   0          23s   10.244.1.12   minikube-m02   <none>           <none>
 */
 
+--Step 12 (Lab)
 --Task 3c — Taint the database node
 --Adding a nodeSelector makes Redis prefer that node — but it doesn't stop other Pods from also landing there. A taint does.
 --Add a taint to minikube-m02:
@@ -811,17 +853,20 @@ root@minikube-n1:~# kubectl taint nodes minikube-m02 dedicated=database:NoSchedu
 node/minikube-m02 tainted
 */
 
+--Step 12.1 (Lab)
 root@minikube-n1:~# kubectl run test-nginx --image=nginx
 /*
 pod/test-nginx created
 */
 
+--Step 12.2 (Lab)
 root@minikube-n1:~# kubectl get pod test-nginx -o wide
 /*
 NAME         READY   STATUS              RESTARTS   AGE   IP       NODE       NOMINATED NODE   READINESS GATES
 test-nginx   0/1     ContainerCreating   0          16s   <none>   minikube   <none>           <none>
 */
 
+--Step 12.3 (Lab)
 root@minikube-n1:~# kubectl describe pod test-nginx | grep -A 5 "Events:"
 /*
 Events:
@@ -831,6 +876,7 @@ Events:
   Normal  Pulling    24s   kubelet            spec.containers{test-nginx}: Pulling image "nginx"
 */
 
+--Step 12.4 (Lab)
 root@minikube-n1:~# kubectl describe pod test-nginx | grep -A 5 "Events:"
 /*
 Events:
@@ -841,12 +887,14 @@ Events:
   Normal  Pulled     2s    kubelet            spec.containers{test-nginx}: Successfully pulled image "nginx" in 26.522s (26.522s including waiting). Image size: 161294340 bytes.
 */
 
+--Step 12.5 (Lab)
 root@minikube-n1:~# kubectl get pod test-nginx -o wide
 /*
 NAME         READY   STATUS    RESTARTS   AGE   IP           NODE       NOMINATED NODE   READINESS GATES
 test-nginx   1/1     Running   0          54s   10.244.0.3   minikube   <none>           <none>
 */
 
+--Step 12.6 (Lab)
 root@minikube-n1:~# kubectl describe pod test-nginx | grep -A 5 "Events:"
 /*
 Events:
@@ -857,11 +905,13 @@ Events:
   Normal  Pulled     29s   kubelet            spec.containers{test-nginx}: Successfully pulled image "nginx" in 26.522s (26.522s including waiting). Image size: 161294340 bytes.
 */
 
+--Step 12.7 (Lab)
 root@minikube-n1:~# kubectl delete pod test-nginx
 /*
 pod "test-nginx" deleted from default namespace
 */
 
+--Step 12.8 (Lab)
 --Checkpoint
 --# Redis should be on minikube-m02 (or Pending — fixed in Task 4)
 root@minikube-n1:~# kubectl get pods -o wide
@@ -870,12 +920,14 @@ NAME                     READY   STATUS    RESTARTS   AGE     IP            NODE
 redis-78756c98dc-b6khd   1/1     Running   0          7m19s   10.244.1.12   minikube-m02   <none>           <none>
 */
 
+--Step 12.9 (Lab)
 --# Should show: dedicated=database:NoSchedule
 root@minikube-n1:~# kubectl describe node minikube-m02 | grep Taint
 /*
 Taints:             dedicated=database:NoSchedule
 */
 
+--Step 13 (Lab)
 --Task 4 — Tolerations: Grant Redis Access Back
 Task 4a — Add a toleration to Redis
 root@minikube-n1:~# vi redis-deploy.yaml
@@ -918,21 +970,25 @@ spec:
             memory: 128Mi
 */
 
+--Step 13.1 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml --dry-run=client
 /*
 deployment.apps/redis configured (dry run)
 */
 
+--Step 13.2 (Lab)
 root@minikube-n1:~# kubectl apply -f redis-deploy.yaml
 /*
 deployment.apps/redis configured
 */
 
+--Step 13.3 (Lab)
 root@minikube-n1:~# kubectl rollout status deployment/redis
 /*
 deployment "redis" successfully rolled out
 */
 
+--Step 13.4 (Lab)
 --The Redis Pod is running on minikube-m02 again. Other Pods (without the toleration) will remain blocked.
 root@minikube-n1:~# kubectl get pods -o wide
 /*
@@ -940,6 +996,7 @@ NAME                     READY   STATUS    RESTARTS   AGE   IP            NODE  
 redis-7dc6f5b84d-l75b4   1/1     Running   0          10s   10.244.1.13   minikube-m02   <none>           <none>
 */
 
+--Step 14 (Lab)
 --Task 4b — Verify isolation
 --Deploy a "batch job" Pod without any toleration to confirm it can't land on the database node:
 root@minikube-n1:~# kubectl run batch-job --image=busybox -- sleep 3600
@@ -947,6 +1004,7 @@ root@minikube-n1:~# kubectl run batch-job --image=busybox -- sleep 3600
 pod/batch-job created
 */
 
+--Step 14.1 (Lab)
 --batch-job lands on minikube (the control-plane node), not minikube-m02. The database node is protected.
 root@minikube-n1:~# kubectl get pods -o wide
 /*
@@ -955,6 +1013,7 @@ batch-job                0/1     ContainerCreating   0          6s     <none>   
 redis-7dc6f5b84d-l75b4   1/1     Running             0          112s   10.244.1.13   minikube-m02   <none>           <none>
 */
 
+--Step 14.2 (Lab)
 --batch-job lands on minikube (the control-plane node), not minikube-m02. The database node is protected.
 root@minikube-n1:~# kubectl get pods -o wide
 /*
@@ -963,6 +1022,7 @@ batch-job                1/1     Running   0          15s    10.244.0.4    minik
 redis-7dc6f5b84d-l75b4   1/1     Running   0          2m1s   10.244.1.13   minikube-m02   <none>           <none>
 */
 
+--Step 14.3 (Lab)
 --Checkpoint
 root@minikube-n1:~# kubectl get pods -o wide
 /*
@@ -971,6 +1031,7 @@ batch-job                1/1     Running   0          86s     10.244.0.4    mini
 redis-7dc6f5b84d-l75b4   1/1     Running   0          3m12s   10.244.1.13   minikube-m02   <none>           <none>
 */
 
+--Step 15 (Lab)
 root@minikube-n1:~# vi spot-th-bug-fixed.yaml
 /*
 apiVersion: apps/v1
@@ -1008,16 +1069,19 @@ spec:
           periodSeconds: 10
 */
 
+--Step 15.1 (Lab)
 root@minikube-n1:~# kubectl apply -f spot-th-bug-fixed.yaml --dry-run=client
 /*
 deployment.apps/web-api created (dry run)
 */
 
+--Step 15.2 (Lab)
 root@minikube-n1:~# kubectl apply -f spot-th-bug-fixed.yaml
 /*
 deployment.apps/web-api created
 */
 
+--Step 15.3 (Lab)
 root@minikube-n1:~# kubectl get pods -A
 /*
 NAMESPACE     NAME                               READY   STATUS    RESTARTS   AGE
@@ -1038,6 +1102,7 @@ kube-system   metrics-server-9d74bb658-jsqh2     1/1     Running   0          10
 kube-system   storage-provisioner                1/1     Running   0          4h17m
 */
 
+--Step 15.4 (Lab)
 root@minikube-n1:~# kubectl get pods -o wide
 /*
 NAME                       READY   STATUS    RESTARTS   AGE     IP            NODE           NOMINATED NODE   READINESS GATES
@@ -1047,6 +1112,7 @@ web-api-7795fb864d-nrfzk   1/1     Running   0          2m51s   10.244.0.6    mi
 web-api-7795fb864d-zs2zz   1/1     Running   0          2m52s   10.244.0.5    minikube       <none>           <none>
 */
 
+--Step 15.5 (Lab)
 root@minikube-n1:~# minikube delete --all
 /*
 * Deleting "minikube" in docker ...
