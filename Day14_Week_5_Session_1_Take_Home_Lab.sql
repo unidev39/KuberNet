@@ -123,6 +123,12 @@ configmap/config configured (dry run)
 */
 
 --Step 2.3 (Lab)
+root@minikube-n1:~# k apply -f metallb-config.yaml
+/*
+configmap/config configured
+*/
+
+--Step 2.4 (Lab)
 --Check that MetalLB pods are running:
 root@minikube-n1:~# k get pods -n metallb-system
 /*
@@ -131,7 +137,7 @@ controller-cff57fcb5-57djh   1/1     Running   0          20m
 speaker-zfzcl                1/1     Running   0          20m
 */
 
---Step 2.4 (Lab)
+--Step 2.5 (Lab)
 --Check the ConfigMap: Verify the address pool:
 root@minikube-n1:~# k get configmap config -n metallb-system -o yaml
 /*
@@ -153,12 +159,6 @@ metadata:
   namespace: metallb-system
   resourceVersion: "1078"
   uid: 084a4d9b-ec26-47c0-8e09-593c7dc383c6
-*/
-
---Step 2.3 (Lab)
-root@minikube-n1:~# k apply -f metallb-config.yaml
-/*
-configmap/config configured
 */
 
 --Step 3 (Lab)
