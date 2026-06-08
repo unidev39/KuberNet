@@ -16,12 +16,12 @@ root@minikube-n1:~# minikube delete --all
 root@minikube-n1:~# minikube start --force
 /*
 * minikube v1.38.1 on Ubuntu 24.04
-! minikube skips various validations when --force is supplied; this may lead to unexpected be                                                                                                havior
+! minikube skips various validations when --force is supplied; this may lead to unexpected be havior
 * Automatically selected the docker driver. Other choices: none, ssh
-* The "docker" driver should not be used with root privileges. If you wish to continue as roo                                                                                                t, use --force.
+* The "docker" driver should not be used with root privileges. If you wish to continue as root, use --force.
 * If you are running minikube within a VM, consider using --driver=none:
 *   https://minikube.sigs.k8s.io/docs/reference/drivers/none/
-! Starting v1.39.0, minikube will default to "containerd" container runtime. See #21973 for m                                                                                                ore info.
+! Starting v1.39.0, minikube will default to "containerd" container runtime. See #21973 for more info.
 * Using Docker driver with root privileges
 * Starting "minikube" primary control-plane node in "minikube" cluster
 * Pulling base image v0.0.50 ...
@@ -247,7 +247,7 @@ store-frontend-74c9fd8859-4pbtl   1/1     Running   0          8m47s   10.244.0.
 */
 
 --Step 3.6 (Lab)
---Step 3: Expose as LoadBalancer
+--Step 3: Expose as LoadBalancer service
 root@minikube-n1:~# k expose deployment store-frontend \
   --type=LoadBalancer \
   --port=80 \
@@ -352,7 +352,7 @@ store-api-5c5887d5fb-8ddn7   1/1     Running   0          2m23s   10.244.0.7   m
 store-api-5c5887d5fb-ljxjw   1/1     Running   0          2m23s   10.244.0.8   minikube   <none>           <none>
 */
 
---Step 5.5 (Lab)
+--Step 5.5 (Lab) - Service
 root@minikube-n1:~# k expose deployment store-api \
   --type=ClusterIP \
   --port=80 \
@@ -384,15 +384,25 @@ store-api-svc   ClusterIP   10.104.45.250   <none>        80/TCP    79s   app=st
 root@minikube-n1:~# curl http://10.104.45.250:80
 
 --Step 6 (Lab)
---Step 3: Prove it works from inside the cluster
-root@minikube-n1:~# k run test-pod --rm -it --image=busybox -- \
-  wget -qO- http://store-api-svc
+--Step 3: Prove it works from inside the cluster - Service created and deleted
+root@minikube-n1:~# k run test-pod --rm -it --image=busybox -- sh
+/*
+All commands and output from this session will be recorded in container logs, including credentials and sensitive information passed through the command prompt.
+If you don't see a command prompt, try pressing enter.
+/ # wget -qO- http://store-api-svc
+KiranaShop API v1 — internal only
+/ # exit
+Session ended, resume using 'kubectl attach test-pod -c test-pod -n default -i -t' command
+pod "test-pod" deleted from default namespace
+*/  
 
 --Step 6.1 (Lab)
-root@minikube-n1:~# k get pod test-pod -o wide
+root@minikube-n1:~# k get svc -o wide
 /*
-NAME       READY   STATUS      RESTARTS       AGE     IP           NODE       NOMINATED NODE   READINESS GATES
-test-pod   0/1     Completed   4 (107s ago)   2m40s   10.244.0.9   minikube   <none>           <none>
+NAME                 TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE     SELECTOR
+kubernetes           ClusterIP      10.96.0.1        <none>           443/TCP        30m     <none>
+store-api-svc        ClusterIP      10.110.230.247   <none>           80/TCP         7m23s   app=store-api
+store-frontend-svc   LoadBalancer   10.97.242.155    192.168.49.100   80:32246/TCP   9m47s   app=store-frontend
 */
 
 --Step 7 (Lab)
@@ -459,7 +469,7 @@ deployment.apps/store-metrics created
 configmap/metrics-html created
 */
 
---Step 7.3 (Lab)
+--Step 7.3 (Lab) - Service
 root@minikube-n1:~# k expose deployment store-metrics \
   --type=NodePort \
   --port=80 \
@@ -644,7 +654,6 @@ store-api-5c5887d5fb-ljxjw       1/1     Running            0                40m
 store-frontend-8d5f48cc9-85wjd   1/1     Running            0                4m29s   app=frontend,pod-template-hash=8d5f48cc9
 store-frontend-8d5f48cc9-fb8kx   1/1     Running            0                4m29s   app=frontend,pod-template-hash=8d5f48cc9
 store-metrics-67b67f4b7d-rptzb   1/1     Running            0                25m     app=store-metrics,pod-template-hash=67b67f4b7d
-test-pod                         0/1     CrashLoopBackOff   10 (4m36s ago)   31m     run=test-pod
 */
 
 --Step 8.9 (Lab)
@@ -688,8 +697,7 @@ Events:
 --Step 3: Fix it
 --Two valid approaches — choose one and explain your reasoning
 --Fix A — Update the Service selector (no downtime, fastest):
-root@minikube-n1:~# k patch svc store-frontend-svc \
-  -p '{"spec":{"selector":{"app":"frontend"}}}'
+root@minikube-n1:~# k patch svc store-frontend-svc  -p '{"spec":{"selector":{"app":"frontend"}}}'
 /*
 service/store-frontend-svc patched
 */
@@ -711,12 +719,38 @@ NAME                 ENDPOINTS                       AGE
 store-frontend-svc   10.244.0.11:80,10.244.0.12:80   53m
 */
 
+--Step 9.1.2 (Lab)
+root@minikube-n1:~# k get svc
+/*
+NAME                 TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE
+kubernetes           ClusterIP      10.96.0.1        <none>           443/TCP        38m
+store-api-svc        ClusterIP      10.110.230.247   <none>           80/TCP         15m
+store-frontend-svc   LoadBalancer   10.97.242.155    192.168.49.100   80:32246/TCP   17m
+store-metrics-svc    NodePort       10.107.148.122   <none>           80:32759/TCP   6m19s
+*/
+
+--Step 9.1.3 (Lab)
+root@minikube-n1:~# k get deployment -o wide
+/*
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES                       SELECTOR
+store-api        2/2     2            2           17m     api          hashicorp/http-echo:alpine   app=store-api
+store-frontend   2/2     2            2           5m16s   frontend     nginx:alpine                 app=frontend
+store-metrics    1/1     1            1           8m17s   metrics      nginx:alpine                 app=store-metrics
+*/
 
 --Step 9.2 (Lab)
 --Fix B — Recreate the Deployment with correct labels (matches original convention):
 root@minikube-n1:~# k delete deployment store-frontend
 /*
 deployment.apps "store-frontend" deleted from default namespace
+*/
+
+--Step 9.2.1 (Lab)
+root@minikube-n1:~# k get deployment -o wide
+/*
+NAME            READY   UP-TO-DATE   AVAILABLE   AGE     CONTAINERS   IMAGES                       SELECTOR
+store-api       2/2     2            2           17m     api          hashicorp/http-echo:alpine   app=store-api
+store-metrics   1/1     1            1           8m53s   metrics      nginx:alpine                 app=store-metrics
 */
 
 --Step 9.3 (Lab)
@@ -781,6 +815,15 @@ configmap/frontend-html unchanged
 */
 
 --Step 9.4 (Lab)
+root@minikube-n1:~# k get deployment -o wide
+/*
+NAME             READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS   IMAGES                       SELECTOR
+store-api        2/2     2            2           20m   api          hashicorp/http-echo:alpine   app=store-api
+store-frontend   2/2     2            2           2m    frontend     nginx:alpine                 app=store-frontend
+store-metrics    1/1     1            1           11m   metrics      nginx:alpine                 app=store-metrics
+*/
+
+--Step 9.5 (Lab)
 --# verify IPs appear
 --Which fix is better? Fix A is faster but accepts the new label convention. Fix B restores the original convention — better if 
 --your team has label standards. In production, Fix B is preferred: fix the root cause (the Deployment), not the symptom (the Service).
@@ -791,16 +834,85 @@ NAME                 ENDPOINTS   AGE
 store-frontend-svc   <none>      57m
 */  
 
---Step 9.5 (Lab)
+--Step 9.6 (Lab) --Infected selector inside the Service
+root@minikube-n1:~# k get svc -o wide
+/*
+NAME                 TYPE           CLUSTER-IP       EXTERNAL-IP      PORT(S)        AGE   SELECTOR
+kubernetes           ClusterIP      10.96.0.1        <none>           443/TCP        44m   <none>
+store-api-svc        ClusterIP      10.110.230.247   <none>           80/TCP         21m   app=store-api
+store-frontend-svc   LoadBalancer   10.97.242.155    192.168.49.100   80:32246/TCP   23m   app=frontend
+store-metrics-svc    NodePort       10.107.148.122   <none>           80:32759/TCP   12m   app=store-metrics
+*/
+
+--Step 9.7 (Lab) --Infected selector inside the Service
+root@minikube-n1:~# k get svc store-frontend-svc -o yaml | grep -A2 -i -E "selector"
+/*
+  selector:
+    app: frontend
+  sessionAffinity: None
+*/
+
+--Step 9.8 (Lab) --Infected selector inside the Service
+root@minikube-n1:~# k get deployment store-frontend -o yaml  | grep -A2 -i -E "selector:"
+/*
+  selector:
+    matchLabels:
+      app: store-frontend
+*/
+
+--Step 9.9 (Lab) -- Service Deleted
+root@minikube-n1:~# k delete svc store-frontend-svc
+/*
+service "store-frontend-svc" deleted from default namespace
+*/
+
+--Step 9.9 (Lab) -- Service Re-Created
+root@minikube-n1:~# k expose deployment store-frontend --type=LoadBalancer --port=80 --name=store-frontend-svc
+/*
+service/store-frontend-svc exposed
+*/
+
+--Step 9.10 (Lab) -- Service Fixed
+root@minikube-n1:~# k get svc store-frontend-svc -o yaml | grep -A2 -i -E "selector"
+/*
+  selector:
+    app: store-frontend
+  sessionAffinity: None
+*/
+
+--Step 9.10.1 (Lab) -- Service Fixed
+root@minikube-n1:~# k get svc store-frontend-svc
+/*
+NAME                 TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE
+store-frontend-svc   LoadBalancer   10.108.88.85   192.168.49.100   80:32397/TCP   111s
+*/
+
+--Step 9.10.2 (Lab) -- Service Fixed
+root@minikube-n1:~# k get svc store-frontend-svc -o wide
+/*
+NAME                 TYPE           CLUSTER-IP     EXTERNAL-IP      PORT(S)        AGE    SELECTOR
+store-frontend-svc   LoadBalancer   10.108.88.85   192.168.49.100   80:32397/TCP   116s   app=store-frontend
+*/
+
+--Step 9.11 (Lab)
+root@minikube-n1:~# k get endpoints store-frontend-svc -o wide
+/*
+Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
+NAME                 ENDPOINTS                       AGE
+store-frontend-svc   10.244.0.13:80,10.244.0.14:80   19s
+*/
+
+--Step 9.12 (Lab)
 --Step 4: Verify recovery
 --# Should show Pod IPs again, e.g. 10.244.0.5:80,10.244.0.6:80
 root@minikube-n1:~# k get endpoints store-frontend-svc
 /*
 Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME                 ENDPOINTS   AGE
-store-frontend-svc   <none>      57m
+NAME                 ENDPOINTS                       AGE
+store-frontend-svc   10.244.0.13:80,10.244.0.14:80   8m5s
 */
 
+--Step 9.13 (Lab)
 root@minikube-n1:~# k get pods -A -o wide
 /*
 NAMESPACE        NAME                               READY   STATUS             RESTARTS         AGE     IP             NODE       NOMINATED NODE   READINESS GATES
@@ -821,19 +933,15 @@ metallb-system   controller-cff57fcb5-57djh         1/1     Running            0
 metallb-system   speaker-zfzcl                      1/1     Running            0                88m     192.168.49.2   minikube   <none>           <none>
 */
 
-root@minikube-n1:~# k delete pod test-pod
-/*
-pod "test-pod" deleted from default namespace
-*/
-
+--Step 9.14 (Lab)
 root@minikube-n1:~# k get endpoints store-frontend-svc -o wide
 /*
 Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME                 ENDPOINTS   AGE
-store-frontend-svc   <none>      71m
+NAME                 ENDPOINTS                       AGE
+store-frontend-svc   10.244.0.13:80,10.244.0.14:80   9m23s
 */
 
---Step 9.6 (Lab)
+--Step 9.15 (Lab)
 --# Any platform
 --Reflect
 --Why does this happen so often? Labels are the glue between every Kubernetes resource — Deployments, Services, NetworkPolicies, 
@@ -843,29 +951,25 @@ store-frontend-svc   <none>      71m
 root@minikube-n1:~# k get endpoints store-frontend-svc -o wide
 /*
 Warning: v1 Endpoints is deprecated in v1.33+; use discovery.k8s.io/v1 EndpointSlice
-NAME                 ENDPOINTS   AGE
-store-frontend-svc   <none>      75m
+NAME                 ENDPOINTS                       AGE
+store-frontend-svc   10.244.0.13:80,10.244.0.14:80   9m23s
 */
 
+--Step 9.16 (Lab)
 root@minikube-n1:~# minikube service store-frontend-svc --url
 /*
-http://192.168.49.2:32055
-
-X Exiting due to SVC_UNREACHABLE: service not available: no running pod for service store-frontend-svc found
-*
-╭─────────────────────────────────────────────────────────────────────────────────────────────╮
-│                                                                                             │
-│    * If the above advice does not help, please let us know:                                 │
-│      https://github.com/kubernetes/minikube/issues/new/choose                               │
-│                                                                                             │
-│    * Please run `minikube logs --file=logs.txt` and attach logs.txt to the GitHub issue.    │
-│    * Please also attach the following file to the GitHub issue:                             │
-│    * - /tmp/minikube_service_496196a061daf9e6bcf77aee0c4aee010c771ce6_0.log                 │
-│                                                                                             │
-╰─────────────────────────────────────────────────────────────────────────────────────────────╯
+http://192.168.49.2:32683
 */
 
-root@minikube-n1:~# curl http://192.168.49.2:32055
+--Step 9.16.1 (Lab)
+root@minikube-n1:~# curl http://192.168.49.2:32683
 /*
-curl: (7) Failed to connect to 192.168.49.2 port 32055 after 0 ms: Couldn't connect to server
+<!DOCTYPE html>
+<html>
+  <body style="font-family:sans-serif;text-align:center;padding:50px">
+    <h1>🛒 KiranaShop</h1>
+    <p>Fresh groceries delivered to your door.</p>
+    <p><em>Served by Pod: will show hostname via server-side include</em></p>
+  </body>
+</html>
 */
