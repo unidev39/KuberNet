@@ -436,42 +436,15 @@ command terminated with exit code 28
 
 --Step 8 (Lab)
 --Want more? (optional challenges)
---Q1. Lock the outgoing doors too. Add policyTypes: [Ingress, Egress] to the backend. Something breaks — what? 
---(Hint: the backend can't even look up names anymore. You'll need to allow port 53 to kube-system so DNS works again.)
+--1.Lock the outgoing doors too. Add policyTypes: [Ingress, Egress] to the backend. Something breaks — what? (Hint: the backend can't even look up names anymore. You'll need to allow port 53 to kube-system so DNS works again.)
+--2.Move the safe to another room. Put db in its own namespace. Why does your podSelector-only rule stop working? (Hint: you now also need a namespaceSelector.)
+--3.Peek under the hood. See how Cilium tracks each pod: kubectl exec -n kube-system <cilium-pod> -- cilium endpoint list
 
---A1. When you add Egress to the policyTypes for the backend without defining specific outbound rules, 
---    Kubernetes immediately blocks all outgoing traffic from the backend pod. As a result, CoreDNS resolution 
---    breaks. The backend pod can no longer contact the cluster's DNS server (usually running in the 
---    kube-system namespace) to resolve domain names like db to an IP address.
-
---The Fix: allow-backend-egress.yaml
---To fix this, you need to allow the backend pod to talk outbound to the db pod and allow outbound UDP/TCP 
---traffic on port 53 to the kube-system namespace for DNS lookups.
---Here is the complete NetworkPolicy to secure the backend's outgoing doors:
-
-
---Step 1: Label the Namespaces
---Before writing cross-namespace policies, Kubernetes needs a way to identify the rooms. Make sure your namespaces are labeled so the selectors can find them:
-root@docker-minikube-n01:~# k label namespace kiranashop kubernetes.io/metadata.name=kiranashop --overwrite
-/*
-namespace/kiranashop not labeled
-*/
-
---# Create and label the new database namespace
-root@docker-minikube-n01:~# k create namespace kirana-db
-/*
-namespace/kirana-db created
-*/
-
-root@docker-minikube-n01:~# k label namespace kirana-db kubernetes.io/metadata.name=kirana-db
-/*
-namespace/kirana-db not labeled
-*/
-
---Step 2: The Complete Backend Policy (Ingress + Egress + Cross-Namespace)
+--Steps 1 and 2 : The Complete Backend Policy (Ingress + Egress + Cross-Namespace)
 --By adding Egress to policyTypes, we lock down all outbound doors. To prevent things from breaking, this manifest explicitly re-opens outbound doors for DNS resolution (Port 53) and the Database (Port 80) in its new namespace.
 --Create a file named backend-complete-policy.yaml:
 
+--Step 8.1 (Lab)
 root@docker-minikube-n01:~# vi backend-complete-policy.yaml
 /*
 apiVersion: networking.k8s.io/v1
@@ -523,14 +496,329 @@ spec:
           port: 80
 */
 
---Step 8.1 (Lab)
+--Step 8.2 (Lab)
 root@docker-minikube-n01:~# k apply -f backend-complete-policy.yaml --dry-run=client
 /*
 networkpolicy.networking.k8s.io/backend-security-policy created (dry run)
 */
 
---Step 8.2 (Lab)
+--Step 8.3 (Lab)
 root@docker-minikube-n01:~# k apply -f backend-complete-policy.yaml
 /*
 networkpolicy.networking.k8s.io/backend-security-policy created
 */
+
+--Step 8.4 (Lab)
+root@docker-minikube-n01:~# k get netpol -A
+/*
+NAMESPACE    NAME                        POD-SELECTOR   AGE
+kiranashop   allow-backend-to-db         app=db         24h
+kiranashop   allow-frontend-to-backend   app=backend    24h
+kiranashop   backend-security-policy     app=backend    156m
+kiranashop   default-deny-ingress        <none>         24h
+*/
+
+--Step 8.5 (Lab)
+root@docker-minikube-n01:~# k exec -n kiranashop backend -- nslookup db.kirana-db
+/*
+;; Got recursion not available from 10.96.0.10
+;; Got recursion not available from 10.96.0.10
+Server:         10.96.0.10
+Address:        10.96.0.10#53
+
+Name:   db.kirana-db.svc.cluster.local
+Address: 10.96.94.223
+;; Got recursion not available from 10.96.0.10
+*/
+
+--Step 8.6 (Lab)
+root@docker-minikube-n01:~# k exec -n kiranashop backend -- curl -s -m 3 db
+/*
+command terminated with exit code 28
+*/
+
+--Step 8.7 (Lab)
+root@docker-minikube-n01:~# k get netpol -A -o wide
+/*
+NAMESPACE    NAME                        POD-SELECTOR   AGE
+kiranashop   allow-backend-to-db         app=db         24h
+kiranashop   allow-frontend-to-backend   app=backend    24h
+kiranashop   backend-security-policy     app=backend    163m
+kiranashop   default-deny-ingress        <none>         25h
+*/
+
+--Step 8.8 (Lab)
+root@docker-minikube-n01:~# k describe -n kiranashop netpol backend-security-policy
+/*
+Name:         backend-security-policy
+Namespace:    kiranashop
+Created on:   2026-06-12 10:32:38 +0545 +0545
+Labels:       <none>
+Annotations:  <none>
+Spec:
+  PodSelector:     app=backend
+  Allowing ingress traffic:
+    To Port: 8080/TCP
+    From:
+      PodSelector: app=frontend
+  Allowing egress traffic:
+    To Port: 53/UDP
+    To Port: 53/TCP
+    To:
+      NamespaceSelector: kubernetes.io/metadata.name=kube-system
+    ----------
+    To Port: 80/TCP
+    To:
+      NamespaceSelector: kubernetes.io/metadata.name=kirana-db
+      PodSelector: app=db
+  Policy Types: Ingress, Egress
+*/
+
+--Step 8.9 (Lab)
+root@docker-minikube-n01:~# k get pod -n kiranashop db -o yaml > db-pod.yaml
+
+--Step 8.10 (Lab)
+-- NameSpace From kiranashop to kirana-db
+root@docker-minikube-n01:~# vi db-pod.yaml
+/*
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: "2026-06-11T06:12:04Z"
+  generation: 1
+  labels:
+    app: db
+  name: db
+  namespace: kirana-db
+  resourceVersion: "1436"
+  uid: 48d8221d-6f84-4d87-afef-19d54493a7a1
+spec:
+  containers:
+  - command:
+    - /bin/sh
+    - -c
+    - echo 'I am DB' > /usr/share/nginx/html/index.html && nginx -g 'daemon off;'
+    image: wbitt/network-multitool
+    imagePullPolicy: Always
+    name: db
+    resources: {}
+    terminationMessagePath: /dev/termination-log
+    terminationMessagePolicy: File
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-b7gtm
+      readOnly: true
+  dnsPolicy: ClusterFirst
+  enableServiceLinks: true
+  nodeName: minikube-m02
+  preemptionPolicy: PreemptLowerPriority
+  priority: 0
+  restartPolicy: Always
+  schedulerName: default-scheduler
+  securityContext: {}
+  serviceAccount: default
+  serviceAccountName: default
+  terminationGracePeriodSeconds: 30
+  tolerations:
+  - effect: NoExecute
+    key: node.kubernetes.io/not-ready
+    operator: Exists
+    tolerationSeconds: 300
+  - effect: NoExecute
+    key: node.kubernetes.io/unreachable
+    operator: Exists
+    tolerationSeconds: 300
+  volumes:
+  - name: kube-api-access-b7gtm
+    projected:
+      defaultMode: 420
+      sources:
+      - serviceAccountToken:
+          expirationSeconds: 3607
+          path: token
+      - configMap:
+          items:
+          - key: ca.crt
+            path: ca.crt
+          name: kube-root-ca.crt
+      - downwardAPI:
+          items:
+          - fieldRef:
+              apiVersion: v1
+              fieldPath: metadata.namespace
+            path: namespace
+status:
+  conditions:
+  - lastProbeTime: null
+    lastTransitionTime: "2026-06-11T06:12:34Z"
+    observedGeneration: 1
+    status: "True"
+    type: PodReadyToStartContainers
+  - lastProbeTime: null
+    lastTransitionTime: "2026-06-11T06:12:04Z"
+    observedGeneration: 1
+    status: "True"
+    type: Initialized
+  - lastProbeTime: null
+    lastTransitionTime: "2026-06-11T06:12:34Z"
+    observedGeneration: 1
+    status: "True"
+    type: Ready
+  - lastProbeTime: null
+    lastTransitionTime: "2026-06-11T06:12:34Z"
+    observedGeneration: 1
+    status: "True"
+    type: ContainersReady
+  - lastProbeTime: null
+    lastTransitionTime: "2026-06-11T06:12:04Z"
+    observedGeneration: 1
+    status: "True"
+    type: PodScheduled
+  containerStatuses:
+  - containerID: docker://354bbb227afbdfe82409e51108c8e0018cd7b0b2f8b9959c7b4216c73daf21a7
+    image: wbitt/network-multitool:latest
+    imageID: docker-pullable://wbitt/network-multitool@sha256:db2810fe2c8d36db074eab5d98fbf861c8ed55e0786d648d3477b3de9135632e
+    lastState: {}
+    name: db
+    ready: true
+    resources: {}
+    restartCount: 0
+    started: true
+    state:
+      running:
+        startedAt: "2026-06-11T06:12:33Z"
+    volumeMounts:
+    - mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      name: kube-api-access-b7gtm
+      readOnly: true
+      recursiveReadOnly: Disabled
+  hostIP: 192.168.49.3
+  hostIPs:
+  - ip: 192.168.49.3
+  observedGeneration: 1
+  phase: Running
+  podIP: 10.244.1.186
+  podIPs:
+  - ip: 10.244.1.186
+  qosClass: BestEffort
+  startTime: "2026-06-11T06:12:04Z"
+*/
+
+--Step 8.11 (Lab)
+root@docker-minikube-n01:~# k create ns kirana-db
+/*
+namespaces/kirana-db created
+*/
+
+--Step 8.12 (Lab)
+root@docker-minikube-n01:~# k apply -f db-pod.yaml -n kirana-db
+/*
+pod/db created
+*/
+
+--Step 8.13 (Lab)
+root@docker-minikube-n01:~# k get pods -n kirana-db
+/*
+NAME   READY   STATUS              RESTARTS   AGE
+db     0/1     ContainerCreating   0          4s
+*/
+
+--Step 8.13.1 (Lab)
+root@docker-minikube-n01:~# k get pods -n kirana-db
+/*
+NAME   READY   STATUS    RESTARTS   AGE
+db     1/1     Running   0          10s
+*/
+
+--Step 8.14 (Lab)
+root@docker-minikube-n01:~# k expose pod db -n kirana-db --dry-run=client --port 80 -o yaml > db-svc.yaml
+
+--Step 8.14.1 (Lab)
+root@docker-minikube-n01:~# cat db-svc.yaml
+/*
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: db
+  name: db
+  namespace: kirana-db
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    app: db
+status:
+  loadBalancer: {}
+*/
+
+--Step 8.14.2 (Lab)
+root@docker-minikube-n01:~# k apply -f db-svc.yaml -n kirana-db --dry-run=client
+/*
+service/db unchanged (dry run)
+*/
+
+--Step 8.14.3 (Lab)
+root@docker-minikube-n01:~# k apply -f db-svc.yaml -n kirana-db
+/*
+service/db created
+*/
+
+--Step 8.18 (Lab)
+root@docker-minikube-n01:~# k get pods -n kiranashop -o wide
+/*
+NAME       READY   STATUS    RESTARTS   AGE   IP             NODE           NOMINATED NODE   READINESS GATES
+backend    1/1     Running   0          25h   10.244.1.233   minikube-m02   <none>           <none>
+db         1/1     Running   0          25h   10.244.1.186   minikube-m02   <none>           <none>
+frontend   1/1     Running   0          25h   10.244.1.62    minikube-m02   <none>           <none>
+*/
+
+--Step 8.19 (Lab)
+root@docker-minikube-n01:~# k get pods -n kirana-db -o wide
+/*
+NAME   READY   STATUS    RESTARTS   AGE    IP             NODE           NOMINATED NODE   READINESS GATES
+db     1/1     Running   0          170m   10.244.1.107   minikube-m02   <none>           <none>
+*/
+
+--Step 8.20 (Lab)
+root@docker-minikube-n01:~# kubectl get svc -n kiranashop
+/*
+NAME       TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)   AGE
+backend    ClusterIP   10.99.167.31     <none>        80/TCP    25h
+db         ClusterIP   10.110.127.255   <none>        80/TCP    25h
+frontend   ClusterIP   10.99.69.245     <none>        80/TCP    25h
+*/
+
+--Step 8.21 (Lab)
+root@docker-minikube-n01:~# kubectl get svc -n kirana-db
+/*
+NAME   TYPE        CLUSTER-IP     EXTERNAL-IP   PORT(S)   AGE
+db     ClusterIP   10.96.94.223   <none>        80/TCP    177m
+*/
+
+--Step 8.22 (Lab)
+root@docker-minikube-n01:~# k exec -n kiranashop backend -- curl -s -m 3 db
+/*
+command terminated with exit code 28
+*/
+
+--Step 8.23 (Lab)
+root@docker-minikube-n01:~# k exec -n kiranashop backend -- curl -s -m 3 db.kiranashop
+/*
+command terminated with exit code 28
+*/
+
+--Step 8.24 (Lab)
+root@docker-minikube-n01:~# k exec -n kiranashop backend -- curl -s -m 3 db.kirana-db
+/*
+I am DB
+*/
+
+--Step 8.25 (Lab)
+root@docker-minikube-n01:~# k exec -n kiranashop frontend -- curl -s -m 3 db.kirana-db
+/*
+I am DB
+*/
+
