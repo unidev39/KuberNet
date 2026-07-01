@@ -1,4 +1,5 @@
 <?php
+// Secure code: No passwords or hardcoded usernames here
 $host = getenv('DB_HOST') ?: 'mysql-db';
 $user = getenv('DB_USER');
 $pass = getenv('DB_PASSWORD');
